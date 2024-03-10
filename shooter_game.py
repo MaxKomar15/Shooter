@@ -1,6 +1,7 @@
 
+from typing import Any
 from pygame import *
-from random import choice
+from random import randint
 from pygame import *
 init()
 mixer.init()
@@ -43,6 +44,7 @@ class GameSprite(sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.mask = mask.from_surface(self.image)
         sprites.add(self)
 
     def draw(self, window):
@@ -77,6 +79,23 @@ class Player(GameSprite):
         if keys[K_d] and self.rect.right < WIDTH    :
             self.rect.x += self.speed
 
+enemys = sprite.Group()
+
+class Enemy(GameSprite):
+        def __init__(self):
+            rand_x = randint(0, WIDTH-70)
+            y = -150
+            super().__init__(enemy_img, 100, 70, rand_x, y)
+            self.speed = 5
+            enemys.add(self)
+
+
+        def update(self):
+            self.rect.y += self.speed
+            if self.rect.y > HEIGHT:
+                self.kill()
+            
+
 player = Player(player_img, 90, 100, 300, 300)
 
 hp_text = font1.render(F"HP: {player.hp}", True, (255, 255, 255))
@@ -84,6 +103,9 @@ points_text = font1.render(F"Points: {player.points}", True, (255, 255, 255))
 finish_text = font2.render("GAME OVER", True, (255, 0, 0))
 
 finish = False
+Enemy()
+last_spawn_time = time.get_ticks()
+spawn_interval = randint(1000, 3000)
 
 while True:
     #оброби подію «клік за кнопкою "Закрити вікно"
@@ -92,25 +114,39 @@ while True:
             quit()
         if e.type == KEYDOWN:
             if e.key == K_ESCAPE:
-                 quit()
+                quit()
 
     if not finish:
-        player.update()
-      
-    if player.hp <= 0:
-        finish = True
+        now = time.get_ticks()
+        if now - last_spawn_time > spawn_interval:
+            Enemy()
+            last_spawn_time = time.get_ticks()
+            spawn_interval = randint(1000, 3000)
+        
+        collide_list = sprite.spritecollide(player, enemys, False, sprite.collide_mask)
+        if collide_list:
+            finish = True
 
-    window.blit(bg, (0,bg_y1))
-    window.blit(bg, (0,bg_y2))
-    bg_y1 += player.bg_speed
-    bg_y2 += player.bg_speed
-    if bg_y1 > HEIGHT:
-        bg_y1 = -HEIGHT
-    if bg_y2 > HEIGHT:
-        bg_y2 = -HEIGHT
+        sprites.update()
+      
+        if player.hp <= 0:
+            finish = True
+
+        window.blit(bg, (0,bg_y1))
+        window.blit(bg, (0,bg_y2))
+        bg_y1 += player.bg_speed
+        bg_y2 += player.bg_speed
+        if bg_y1 > HEIGHT:
+            bg_y1 = -HEIGHT
+        if bg_y2 > HEIGHT:
+            bg_y2 = -HEIGHT
     sprites.draw(window)
     window.blit(hp_text, (10, 10))
     if finish:
         window.blit(finish_text, (300, 250))
     display.update()
     clock.tick(FPS)
+
+
+
+
