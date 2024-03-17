@@ -20,6 +20,8 @@ mixer.music.load("space.ogg")
 mixer.music.set_volume(0.2)
 mixer.music.play(loops=-1)
 
+fire_sound = mixer.Sound('fire.ogg')
+
 kick_sound = mixer.Sound('fire.ogg')
 kick_sound.play()
 
@@ -31,6 +33,7 @@ bg = image.load("infinite_starts.jpg") # завантажуємо картинк
 bg = transform.scale(bg, (WIDTH, HEIGHT)) #змінюємо розмір картинки
 player_img = image.load('spaceship.png')
 enemy_img = image.load('alien.png')
+bullet_img = image.load('lazer.png')
 bg_y1 = 0
 bg_y2 = -HEIGHT
 
@@ -57,7 +60,7 @@ class Player(GameSprite):
         self.hp = 100
         self.damage = 20
         self.points = 0
-        self.speed = 5
+        self.speed = 10
         self.bg_speed = 2
 
     def update(self):
@@ -76,8 +79,16 @@ class Player(GameSprite):
 
         if keys[K_a] and self.rect.left > 0:
             self.rect.x -= self.speed
-        if keys[K_d] and self.rect.right < WIDTH    :
+        if keys[K_d] and self.rect.right < WIDTH:
             self.rect.x += self.speed
+
+    def fire(self):
+        bullet = Bullet(self.rect.centerx, self.rect.y)
+        fire_sound.play()
+
+
+
+
 
 enemys = sprite.Group()
 
@@ -95,12 +106,27 @@ class Enemy(GameSprite):
             if self.rect.y > HEIGHT:
                 self.kill()
             
+bullets = sprite.Group()
+
+class Bullet(GameSprite):
+        def __init__(self, player_x, player_y):
+            super().__init__(bullet_img, 20, 40, player_x, player_y)
+            self.rect.centerx = player_x
+            self.rect.bottom = player_y
+            self.speed = 15
+            bullets.add(self)
+
+        def update(self):
+            self.rect.y -= self.speed
+            if self.rect.y < 0:
+                self.kill()
+
 
 player = Player(player_img, 90, 100, 300, 300)
 
 hp_text = font1.render(F"HP: {player.hp}", True, (255, 255, 255))
 points_text = font1.render(F"Points: {player.points}", True, (255, 255, 255))
-finish_text = font2.render("GAME OVER", True, (255, 0, 0))
+finish_text = font2.render("[>GAME OVER<]", True, (255, 0, 0))
 
 finish = False
 Enemy()
@@ -115,6 +141,9 @@ while True:
         if e.type == KEYDOWN:
             if e.key == K_ESCAPE:
                 quit()
+        if e.type == MOUSEBUTTONDOWN:
+            if e.button == 1:
+                player.fire()
 
     if not finish:
         now = time.get_ticks()
@@ -123,9 +152,12 @@ while True:
             last_spawn_time = time.get_ticks()
             spawn_interval = randint(1000, 3000)
         
+        bullets_collide = sprite.groupcollide(bullets, enemys, True, True, sprite.collide_mask)
         collide_list = sprite.spritecollide(player, enemys, False, sprite.collide_mask)
-        if collide_list:
-            finish = True
+        for enemy in collide_list:
+            player.hp -= 50
+            hp_text = font1.render(F"HP: {player.hp}", True, (255, 255, 255))
+            enemys.remove(enemy)
 
         sprites.update()
       
@@ -142,11 +174,10 @@ while True:
             bg_y2 = -HEIGHT
     sprites.draw(window)
     window.blit(hp_text, (10, 10))
+    window.blit(points_text, (WIDTH-200, 10))
     if finish:
         window.blit(finish_text, (300, 250))
     display.update()
     clock.tick(FPS)
-
-
 
 
